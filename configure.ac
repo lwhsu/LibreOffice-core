@@ -11866,7 +11866,7 @@ case "$_os" in
         ;;
     *)
         GRAPHITE_LIBS_internal='-L$(gb_StaticLibrary_WORKDIR) -lgraphite'
-        HARFBUZZ_LIBS_internal='-L$(gb_UnpackedTarball_workdir)/harfbuzz/builddir/src/ -lharfbuzz -lharfbuzz-subset $(GRAPHITE_LIBS)'
+        HARFBUZZ_LIBS_internal='$(gb_UnpackedTarball_workdir)/harfbuzz/builddir/src/libharfbuzz.a $(gb_UnpackedTarball_workdir)/harfbuzz/builddir/src/libharfbuzz-subset.a $(GRAPHITE_LIBS)'
         ;;
 esac
 libo_CHECK_SYSTEM_MODULE([graphite],[GRAPHITE],[graphite2 >= 0.9.3])

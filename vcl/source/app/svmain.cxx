@@ -249,7 +249,13 @@ int ImplSVMainRun()
 
 int SVMain()
 {
-    return ImplSVMain();
+    int nRet = ImplSVMain();
+    // Unloading the plugin from DeInitVCL() would pull the module out from
+    // under SalInstance::SVMainRun(), which is an inline virtual and therefore
+    // lives in the plugin itself; returning from it would then jump into an
+    // unmapped page. Unload here, where no plugin frame is left on the stack.
+    UnloadSalPluginModule();
+    return nRet;
 }
 
 // This variable is set when no Application object has been instantiated

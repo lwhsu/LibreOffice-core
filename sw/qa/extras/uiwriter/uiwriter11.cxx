@@ -914,6 +914,11 @@ CPPUNIT_TEST_FIXTURE(SwUiWriterTest11, testTdf36181_findReplaceParaStyle)
     // Without the fix, all of the selection applied the Caption style
     CPPUNIT_ASSERT_EQUAL(u"Text body indent"_ustr,
                          getProperty<OUString>(getParagraph(3), u"ParaStyleName"_ustr));
+
+    // the SvxSearchItem is a process-wide static (SwView::s_pSrchItem);
+    // leaving Selection=true makes later find/replace tests search inside a
+    // (nonexistent) selection - restore the default
+    rInit.SetSelection(false);
 }
 
 CPPUNIT_TEST_FIXTURE(SwUiWriterTest11, testTdf129449_findReplaceParaStyle2)
@@ -1163,6 +1168,9 @@ CPPUNIT_TEST_FIXTURE(SwUiWriterTest11, testTdf124442)
     SfxItemSet aSet(rView.GetPool(), svl::Items<SID_SEARCH_ITEM, SID_SEARCH_ITEM>);
     rView.StateSearch(aSet); // initializes SwView::GetSearchItem
     SvxSearchItem& rSearchItem = *SwView::GetSearchItem();
+    // the static item may carry Pattern=true (paragraph style search) from
+    // earlier tests; this test needs a text search
+    rSearchItem.SetPattern(false);
     rSearchItem.SetCommand(SvxSearchCmd::FIND);
 
     SfxItemSet aFn(rView.GetPool(), svl::Items<FN_REPEAT_SEARCH, FN_REPEAT_SEARCH>);

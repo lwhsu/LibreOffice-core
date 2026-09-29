@@ -19,7 +19,7 @@
 
 # Jar class
 
-gb_Jar_JARCOMMAND := jar $(if $(SOURCE_DATE_EPOCH),--date="$(shell date $(if $(filter $(OS),MACOSX),-r ,-d @)$(SOURCE_DATE_EPOCH) -u +'%FT%T+00:00')")
+gb_Jar_JARCOMMAND := jar $(if $(SOURCE_DATE_EPOCH),--date="$(shell date $(if $(filter $(OS),MACOSX DRAGONFLY FREEBSD NETBSD OPENBSD),-r ,-d @)$(SOURCE_DATE_EPOCH) -u +'%FT%T+00:00')")
 
 gb_Jar_LAYER_DIRS := \
 	URE:$(INSTROOT)/$(LIBO_URE_SHARE_JAVA_FOLDER) \
