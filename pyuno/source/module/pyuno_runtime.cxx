@@ -988,6 +988,19 @@ PyThreadAttach::PyThreadAttach( PyInterpreterState *interp)
 
 PyThreadAttach::~PyThreadAttach()
 {
+    // If the Python runtime is finalizing, Py_FinalizeEx() has already freed
+    // this thread's PyThreadState via _PyThreadState_DeleteExcept(), so tstate
+    // is a dangling pointer; touching it would be a use-after-free.  This
+    // destructor can still run in that situation because CPython terminates a
+    // thread that attempts to take the GIL during finalization via
+    // pthread_exit() (take_gil() in Python/ceval_gil.c), whose forced stack
+    // unwinding runs C++ destructors.  Conversely, if the runtime is not yet
+    // finalizing here, this thread still holds the GIL, so the finalizing
+    // thread cannot get past _PyRuntimeState_SetFinalizing() (it needs the
+    // GIL) and tstate is guaranteed to still be valid.  So: just leak tstate
+    // when finalizing.
+    if (isInterpreterFinalizing())
+        return;
     if (m_isNewState)
     {   // Clear needs GIL!
         PyThreadState_Clear( tstate );

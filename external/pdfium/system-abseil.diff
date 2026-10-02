@@ -28,3 +28,18 @@ diff -urN pdfium-old/core/fpdfdoc/cpdf_nametree.cpp pdfium/core/fpdfdoc/cpdf_nam
  
  namespace {
  
+diff -urN pdfium-old/core/fpdfdoc/cpvt_variabletext.cpp pdfium/core/fpdfdoc/cpvt_variabletext.cpp
+--- core/fpdfdoc/cpvt_variabletext.cpp	2026-09-19 00:00:00.000000000 +0000
++++ core/fpdfdoc/cpvt_variabletext.cpp	2026-09-19 00:00:00.000000000 +0000
+@@ -21,7 +21,11 @@
+ #include "core/fxcrt/fx_safe_types.h"
+ #include "core/fxcrt/span.h"
+ #include "core/fxcrt/stl_util.h"
++#ifdef USE_SYSTEM_ABSEIL
++#include <absl/cleanup/cleanup.h>
++#else
+ #include "third_party/abseil-cpp/absl/cleanup/cleanup.h"
++#endif
+ 
+ namespace {
+ 

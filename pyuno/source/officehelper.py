@@ -181,10 +181,8 @@ def bootstrap(soffice=None, delays=(1, 3, 5, 7), report=lambda *args: None):
         command = [sOffice, '--nologo', '--nodefault', f"--accept={connect_string}"]
         if platform.startswith("win") or platform == "darwin":
             process = subprocess.Popen(command)
-        elif platform == "linux":  # Use a process group to enable proper termination
+        else:  # POSIX: use a process group to enable proper termination
             process = subprocess.Popen(command, preexec_fn=os.setsid)
-        else:
-            raise OSError
         # Connect to a started office instance
         xLocalContext = uno.getComponentContext()
         resolver = xLocalContext.ServiceManager.createInstanceWithContext(
@@ -202,7 +200,7 @@ def bootstrap(soffice=None, delays=(1, 3, 5, 7), report=lambda *args: None):
         if process:  # clean memory from soffice running process
             if platform.startswith("win") or platform == "darwin":
                 process.terminate()  # Send termination signal
-            elif platform == "linux":
+            else:
                 os.killpg(os.getpgid(process.pid), signal.SIGTERM)  # Send termination signal to process group
         raise BootstrapException
 

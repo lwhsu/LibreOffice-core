@@ -47,7 +47,13 @@ static StaticDestructorGuard guard;
 static bool isAfterUnloadOrPy_Finalize()
 {
     return g_destructorsOfStaticObjectsHaveBeenCalled ||
-        !Py_IsInitialized();
+        !Py_IsInitialized() ||
+        // A GC thread started once Py_FinalizeEx() is past
+        // _PyRuntimeState_SetFinalizing() could never do useful work: its
+        // attempt to take the GIL would terminate it (take_gil() in CPython's
+        // Python/ceval_gil.c), and the PyThreadState it would create would
+        // never be cleaned up, so do not even create one.
+        isInterpreterFinalizing();
 }
 
 namespace {
