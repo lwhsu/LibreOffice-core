@@ -206,22 +206,6 @@ $(eval $(call gb_Library_add_generated_exception_objects,skia,\
 ))
 endif
 
-# from file skia/gn/BUILD.gn:553, target "skia_executable("sksl-minify")"
-#
-ifeq ($(OS),WNT)
-$(eval $(call gb_Library_add_generated_exception_objects,skia,\
-    UnpackedTarball/skia/src/utils/SkGetExecutablePath_win \
-))
-else ifeq ($(OS),MACOSX)
-$(eval $(call gb_Library_add_generated_exception_objects,skia,\
-    UnpackedTarball/skia/src/utils/SkGetExecutablePath_mac \
-))
-else
-$(eval $(call gb_Library_add_generated_exception_objects,skia,\
-    UnpackedTarball/skia/src/utils/SkGetExecutablePath_linux \
-))
-endif
-
 # from file skia/gn/BUILD.gn:1278, target "optional("png_decode")"
 #
 $(eval $(call gb_Library_add_generated_exception_objects,skia,\
