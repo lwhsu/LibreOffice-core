@@ -598,7 +598,9 @@ bool SwView::SearchAndWrap(bool bApi)
         }
         s_bExtra = false;
     }
-    else
+    else if (!s_pSrchItem->GetSelection())
+        // the body/other alternation state is only meaningful for the
+        // non-selection search; don't corrupt it while searching a selection
         s_bExtra = !s_bExtra;
 
         // If starting position is at the end or beginning of the document.

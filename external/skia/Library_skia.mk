@@ -109,7 +109,7 @@ $(eval $(call gb_Library_use_externals,skia,\
     libpng \
 ))
 
-ifeq ($(OS),LINUX)
+ifneq (,$(filter DRAGONFLY FREEBSD LINUX NETBSD OPENBSD,$(OS)))
 $(eval $(call gb_Library_add_libs,skia,\
     -lm \
     -ldl \

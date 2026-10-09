@@ -10,6 +10,7 @@
 #include <config_java.h>
 
 #include <signal.h>
+#include <time.h>
 #include <unistd.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -700,26 +701,32 @@ static void exec_javaldx(Args *args)
 
 // has to be a global :(
 static oslProcess volatile g_pProcess = nullptr;
+// ...and so does the child's pid: the SIGTERM handler may only use
+// async-signal-safe functions, which rules out asking osl for it there.
+static volatile pid_t g_childPid = 0;
 
 static void sigterm_handler(int /*ignored*/)
 {
-    if (g_pProcess) {
-        bool SigTermSucceded = false;
-        oslProcessInfo info;
-        info.Size = sizeof(oslProcessInfo);
-
-        // forward SIGTERM to soffice.bin and give it a chance to semi-gracefully exit
-        // enough to remove named pipe
-        if (osl_getProcessInfo(g_pProcess, osl_Process_IDENTIFIER, &info) == osl_Process_E_None) {
-            TimeValue delay = { 1, 0 }; // 1 sec
-            SigTermSucceded = kill(info.Ident, SIGTERM) == 0 &&
-                              osl_joinProcessWithTimeout(g_pProcess, &delay) == osl_Process_E_None;
-        }
-
-        // didn't work, SIGKILL instead
-        if (!SigTermSucceded) {
-            osl_terminateProcess(g_pProcess); // uses SIGKILL to terminate soffice.bin
-            osl_joinProcess(g_pProcess);
+    // Everything this handler calls must be async-signal-safe (POSIX.1-2017,
+    // 2.4.3). osl_joinProcessWithTimeout() and osl_joinProcess() are not: they
+    // wait on a condition variable, and doing that from a signal handler that
+    // interrupted a thread already waiting on another condition variable makes
+    // FreeBSD's libthr abort the process outright:
+    //   Fatal error 'thread ... was already on queue.' at line 285 in file
+    //   /usr/src/lib/libthr/thread/thr_cond.c
+    // glibc does not diagnose it, but the code is equally wrong there.
+    // kill(), nanosleep() and _exit() are all on the safe list, and they are
+    // enough to keep the intent: ask soffice.bin to go away, give it a moment
+    // to remove its named pipe, then insist.
+    pid_t child = g_childPid;
+    if (child > 0) {
+        if (kill(child, SIGTERM) == 0) {
+            struct timespec delay = { 1, 0 }; // 1 sec
+            nanosleep(&delay, nullptr);
+            // No-op if it is already gone; otherwise it had its chance.
+            kill(child, SIGKILL);
+        } else {
+            kill(child, SIGKILL);
         }
     }
 
@@ -826,6 +833,14 @@ SAL_IMPLEMENT_MAIN_WITH_ARGS(argc, argv)
                to what status_fd says, poll quickly only while starting */
             info = child_spawn (args, bAllArgs, bShortWait);
             g_pProcess = info->child;
+            {
+                oslProcessInfo aInfo;
+                aInfo.Size = sizeof(aInfo);
+                g_childPid = osl_getProcessInfo(info->child, osl_Process_IDENTIFIER,
+                                                &aInfo) == osl_Process_E_None
+                                 ? static_cast<pid_t>(aInfo.Ident)
+                                 : 0;
+            }
 
             while (!child_exited_wait(info, bShortWait))
             {
@@ -844,6 +859,7 @@ SAL_IMPLEMENT_MAIN_WITH_ARGS(argc, argv)
 
             status = child_get_exit_code(info);
             g_pProcess = nullptr; // reset
+            g_childPid = 0;
 
             switch (status)
             {
