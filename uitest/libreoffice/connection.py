@@ -10,6 +10,12 @@ import time
 import traceback
 import uuid
 import os
+
+# Bounds for the two waits below. Without them a single office that never
+# accepts a connection, or never exits, stops the whole test run instead of
+# failing one test: `make uicheck` then runs until someone kills it.
+CONNECT_TIMEOUT = float(os.environ.get("UITEST_CONNECT_TIMEOUT", "120"))
+TERMINATE_TIMEOUT = float(os.environ.get("UITEST_TERMINATE_TIMEOUT", "120"))
 import platform
 import signal
 
@@ -107,6 +113,9 @@ class OfficeConnection:
                 "com.sun.star.bridge.UnoUrlResolver", xLocalContext)
         url = "uno:" + socket + ";urp;StarOffice.ComponentContext"
         print("OfficeConnection: connecting to: " + url, flush=True)
+        # An office that starts but never accepts the connection would otherwise
+        # keep this loop, and the whole test run, going forever.
+        deadline = time.monotonic() + CONNECT_TIMEOUT
         while True:
             if self.soffice and self.soffice.poll() is not None:
                 raise Exception("soffice has stopped.")
@@ -115,6 +124,10 @@ class OfficeConnection:
                 xContext = xUnoResolver.resolve(url)
                 return xContext
             except pyuno.getClass("com.sun.star.connection.NoConnectException"):
+                if time.monotonic() > deadline:
+                    raise Exception(
+                        "could not connect to soffice within %g seconds: %s"
+                        % (CONNECT_TIMEOUT, url))
                 print("NoConnectException: sleeping...", flush=True)
                 time.sleep(1)
 
@@ -122,11 +135,21 @@ class OfficeConnection:
         """Terminate a LibreOffice instance created with the path connection method.
 
         Tries to terminate the soffice instance through the normal
-        XDesktop::terminate method and waits indefinitely for the subprocess
-        to terminate """
+        XDesktop::terminate method and waits a bounded time for the subprocess
+        to terminate; an office that will not exit is killed, and that is
+        reported as a failure rather than hanging the run."""
 
         if self.soffice:
-            if self.xContext:
+            # Truth-testing a pyuno object calls into the bridge, so when the
+            # office has already died this raises instead of answering, and the
+            # exception escapes tearDown and takes the module's whole result
+            # summary with it. Treat an unusable bridge as "no context".
+            try:
+                hasContext = bool(self.xContext)
+            except pyuno.getClass("com.sun.star.uno.RuntimeException"):
+                print("tearDown: bridge already disposed", flush=True)
+                hasContext = False
+            if hasContext:
                 try:
                     print("tearDown: calling terminate()...", flush=True)
                     xMgr = self.xContext.ServiceManager
@@ -143,7 +166,18 @@ class OfficeConnection:
             else:
                 self.soffice.terminate()
 
-            ret = self.soffice.wait()
+            try:
+                ret = self.soffice.wait(timeout=TERMINATE_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                print("soffice did not exit within %g seconds, killing it"
+                      % TERMINATE_TIMEOUT, flush=True)
+                self.soffice.kill()
+                ret = self.soffice.wait()
+                self.xContext = None
+                self.soffice = None
+                raise Exception(
+                    "soffice did not terminate within %g seconds"
+                    % TERMINATE_TIMEOUT)
             self.xContext = None
             self.soffice = None
             if ret != 0:

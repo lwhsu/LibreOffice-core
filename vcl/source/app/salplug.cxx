@@ -312,9 +312,16 @@ SalInstance *CreateSalInstance()
 void DestroySalInstance( SalInstance *pInst )
 {
     delete pInst;
+}
+
+void UnloadSalPluginModule()
+{
 #if !STATIC_SAL_INSTANCE
     if( pCloseModule )
+    {
         osl_unloadModule( pCloseModule );
+        pCloseModule = nullptr;
+    }
 #endif
 }
 
