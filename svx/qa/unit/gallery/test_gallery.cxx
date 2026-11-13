@@ -171,7 +171,7 @@ void GalleryObjTest::TestThemeURLCase()
     CPPUNIT_ASSERT_MESSAGE("Could not create theme", pGallery->CreateTheme(myThemeName));
     CPPUNIT_ASSERT_MESSAGE("Could not find theme", pGallery->HasTheme(myThemeName));
 
-#if defined(LINUX)
+#if defined(UNX)
     CPPUNIT_ASSERT_MESSAGE("[LINUX] Could not find .thm in lowercase",
                            comphelper::DirectoryHelper::fileExists(
                                aGalleryURL + "/" + myThemeName.toAsciiLowerCase() + ".thm"));

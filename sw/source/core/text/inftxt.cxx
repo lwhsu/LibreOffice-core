@@ -1748,7 +1748,7 @@ bool SwTextFormatInfo::InitHyph( const bool bAutoHyphen )
                  bNoCapsHyphenation, bNoLastWordHyphenation,
                  nMinimalWordLength, nTextHyphZone, bKeep, nKeepType,
                  bKeepLine, nCompoundMinimalLeading,
-                 nCompoundMinimalTrailing, nTextHyphZoneAlways, nLevel,
+                 nTextHyphZoneAlways, nLevel, nCompoundMinimalTrailing,
                  bSplitCompoundWord );
     }
     return bAuto;

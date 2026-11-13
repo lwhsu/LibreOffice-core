@@ -192,7 +192,9 @@ void raiseException( uno_Any * pUnoExc, uno_Mapping * pUno2Cpp )
 
 void fillUnoException(uno_Any * pUnoExc, uno_Mapping * pCpp2Uno)
 {
-    __cxxabiv1::__cxa_exception * header = __cxxabiv1::__cxa_get_globals()->caughtExceptions;
+    __cxxabiv1::__cxa_exception * header =
+        reinterpret_cast<__cxxabiv1::__cxa_exception *>(
+             __cxxabiv1::__cxa_current_primary_exception());
     if (! header)
     {
         RuntimeException aRE( u"no exception header!"_ustr );
@@ -201,6 +203,7 @@ void fillUnoException(uno_Any * pUnoExc, uno_Mapping * pCpp2Uno)
         SAL_WARN("bridges", aRE.Message);
         return;
     }
+    __cxxabiv1::__cxa_decrement_exception_refcount(header);
 
 #if defined _LIBCPPABI_VERSION // detect libc++abi
     // Very bad HACK to find out whether we run against a libcxxabi that has a new
@@ -230,7 +233,7 @@ void fillUnoException(uno_Any * pUnoExc, uno_Mapping * pCpp2Uno)
     }
 #endif
 
-    std::type_info *exceptionType = __cxxabiv1::__cxa_current_exception_type();
+    std::type_info *exceptionType = header[-1].exceptionType;
 
     typelib_TypeDescription * pExcTypeDescr = nullptr;
     OUString unoName( toUNOname( exceptionType->name() ) );
@@ -249,7 +252,7 @@ void fillUnoException(uno_Any * pUnoExc, uno_Mapping * pCpp2Uno)
     else
     {
         // construct uno exception any
-        uno_any_constructAndConvert( pUnoExc, header->adjustedPtr, pExcTypeDescr, pCpp2Uno );
+        uno_any_constructAndConvert( pUnoExc, header[-1].adjustedPtr, pExcTypeDescr, pCpp2Uno );
         typelib_typedescription_release( pExcTypeDescr );
     }
 }

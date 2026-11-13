@@ -304,6 +304,25 @@ public:
  */
 void decreaseRefCount( PyInterpreterState *interpreter, PyObject *object );
 
+/** Returns true iff the Python runtime is currently being finalized
+    (Py_FinalizeEx() has passed _PyRuntimeState_SetFinalizing()).
+
+    From that point on, Py_FinalizeEx() has also freed the PyThreadState of
+    every thread but the one running the finalization
+    (_PyThreadState_DeleteExcept()), and any other thread that attempts to
+    acquire the GIL is terminated via pthread_exit() (see take_gil() in
+    CPython's Python/ceval_gil.c), so no other thread may touch its
+    PyThreadState anymore.
+ */
+inline bool isInterpreterFinalizing()
+{
+#if PY_VERSION_HEX >= 0x030d0000
+    return Py_IsFinalizing() != 0;
+#else
+    return _Py_IsFinalizing() != 0;
+#endif
+}
+
 }
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab: */

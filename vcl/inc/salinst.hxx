@@ -242,6 +242,9 @@ public:
 // called from SVMain
 SalInstance* CreateSalInstance();
 void DestroySalInstance( SalInstance* pInst );
+// Unload the VCL plugin module, if one was loaded. Must not be called while
+// any frame belonging to that module is still on the stack.
+void UnloadSalPluginModule();
 
 void SalAbort( const OUString& rErrorText, bool bDumpCore );
 

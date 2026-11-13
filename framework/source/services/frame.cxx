@@ -3224,6 +3224,15 @@ void XFrameImpl::impl_setCloser( /*IN*/ const css::uno::Reference< css::frame::X
         css::uno::Reference< css::beans::XPropertySet > xLayoutProps(xLayoutManager, css::uno::UNO_QUERY_THROW);
         xLayoutProps->setPropertyValue(LayoutManagerPropNames[LayoutManagerPropHandle::MenuBarCloser], css::uno::Any(bState));
     }
+    catch(const css::lang::DisposedException&)
+        {
+            // The frame may already be disposed but still weakly referenced
+            // by impl_checkMenuCloser()'s s_xCloserFrame: there is nothing
+            // to update on it anymore, and letting the exception escape
+            // would abort an unrelated in-progress document load (it would
+            // propagate out of XFrameImpl::windowShown through
+            // vcl::Window::Show into e.g. SfxFrameLoader_Impl::load).
+        }
     catch(const css::uno::RuntimeException&)
         { throw; }
     catch(const css::uno::Exception&)

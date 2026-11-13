@@ -117,4 +117,12 @@ $(eval $(call gb_Library_add_exception_objects,utl,\
     unotools/source/ucbhelper/xtempfile \
 ))
 
+# unotools/source/i18n/resmgr.cxx calls bindtextdomain/bind_textdomain_codeset;
+# on the BSDs those live in libintl, not libc.
+ifneq (,$(filter DRAGONFLY FREEBSD NETBSD OPENBSD,$(OS)))
+$(eval $(call gb_Library_add_libs,utl,\
+    -lintl \
+))
+endif
+
 # vim: set noet sw=4 ts=4:

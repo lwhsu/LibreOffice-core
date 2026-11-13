@@ -174,6 +174,11 @@ CPPUNIT_TEST_FIXTURE(SwUiWriterTest4, testTdf98446_switch_to_single_page_on_hide
     // - Actual  : Whitespace remained hidden in multi-column mode
     pView->SetViewLayout(/*nColumns=*/2, /*bBookMode=*/true);
     CPPUNIT_ASSERT(!pWrtShell->GetViewOptions()->IsWhitespaceHidden());
+
+    // SetViewLayout persists the layout in the module-wide user preferences
+    // (SwView::SetViewLayout -> pUsrPref), so restore single-page layout to
+    // not break whitespace-hiding/layout tests that run later in this process
+    pView->SetViewLayout(/*nColumns=*/1, /*bBookMode=*/false);
 }
 
 static OUString lcl_translitTest(SwDoc& rDoc, const SwPaM& rPaM, TransliterationFlags const nType)
