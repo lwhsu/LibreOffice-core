@@ -7,6 +7,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+#include <config_java.h>
+
 #include <test/bootstrapfixture.hxx>
 
 #include <connectivity/DriversConfig.hxx>
@@ -38,10 +40,16 @@ void DriversConfigTest::testTdf174405MysqlNamedParameterFeature()
         CPPUNIT_ASSERT_MESSAGE(
             pMsg, aConfig.getFeatures(rUrl).getOrDefault(u"ParameterNameSubstitution"_ustr, false));
     };
+    // Drivers-mysqlc.xcu is only installed with --enable-mariadb-sdbc, and
+    // Drivers-mysql_jdbc.xcu only with Java (postprocess/CustomTarget_registry.mk)
+#ifdef ENABLE_MARIADBC
     check(u"sdbc:mysql:mysqlc:localhost/test",
           "mysqlc driver has no ParameterNameSubstitution feature");
+#endif
+#if HAVE_FEATURE_JAVA
     check(u"sdbc:mysql:jdbc:localhost/test",
           "mysql_jdbc driver has no ParameterNameSubstitution feature");
+#endif
     check(u"sdbc:mysql:odbc:localhost/test",
           "MySQL ODBC driver has no ParameterNameSubstitution feature");
 }

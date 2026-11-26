@@ -44,4 +44,8 @@ $(eval $(call gb_CppunitTest_use_components,connectivity_commontools,\
 
 $(eval $(call gb_CppunitTest_use_configuration,connectivity_commontools))
 
+ifeq ($(ENABLE_MARIADBC),TRUE)
+$(eval $(call gb_CppunitTest_add_defs,connectivity_commontools,-DENABLE_MARIADBC))
+endif
+
 # vim: set noet sw=4 ts=4:

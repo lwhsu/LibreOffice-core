@@ -5,6 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
 
+import os
 import time
 import threading
 import tempfile
@@ -18,6 +19,29 @@ from libreoffice.uno.eventlistener import EventListener
 from libreoffice.uno.propertyvalue import mkPropertyValues
 
 DEFAULT_SLEEP = 0.1
+
+# Every wait below polls for an event that a correctly working office sends
+# within a second or two. Without an upper bound a single lost event does not
+# fail the test, it wedges the run: the office sits idle in its event loop and
+# the test sleeps forever, so `make uicheck` never finishes and a CI node stays
+# busy until someone notices. Bound the waits instead, and let the test fail.
+MAX_WAIT = float(os.environ.get("UITEST_MAX_WAIT", "120"))
+
+
+class UITestTimeout(Exception):
+    pass
+
+
+def _wait_deadline():
+    return time.monotonic() + MAX_WAIT
+
+
+def _wait_tick(deadline, what):
+    """Sleep one polling interval, or give up if the deadline has passed."""
+    if time.monotonic() > deadline:
+        raise UITestTimeout(
+            "timed out after %g seconds waiting for %s" % (MAX_WAIT, what))
+    time.sleep(DEFAULT_SLEEP)
 
 class UITest(object):
 
@@ -53,31 +77,36 @@ class UITest(object):
         return DEFAULT_SLEEP
 
     def wait_for_top_focus_window(self, id):
+        deadline = _wait_deadline()
         while True:
             win = self._xUITest.getTopFocusWindow()
             if get_state_as_dict(win)['ID'] == id:
                 return win
-            time.sleep(DEFAULT_SLEEP)
+            _wait_tick(deadline, "window %s to take focus" % id)
 
     def wait_until_child_is_available(self, childName):
+        deadline = _wait_deadline()
         while True:
             xDialog = self._xUITest.getTopFocusWindow()
             if childName in xDialog.getChildren():
                 return xDialog.getChild(childName)
             else:
-                time.sleep(DEFAULT_SLEEP)
+                _wait_tick(deadline, "child %s to appear" % childName)
 
     def wait_until_property_is_updated(self, element, propertyName, value):
+        deadline = _wait_deadline()
         while True:
             if get_state_as_dict(element)[propertyName] == value:
                 return
             else:
-                time.sleep(DEFAULT_SLEEP)
+                _wait_tick(deadline,
+                           "property %s to become %s" % (propertyName, value))
 
     @contextmanager
     def wait_until_component_loaded(self):
         with EventListener(self._xContext, "OnLoad") as event:
             yield
+            deadline = _wait_deadline()
             while True:
                 if event.executed:
                     frames = self.get_frames()
@@ -85,18 +114,19 @@ class UITest(object):
                         self.get_desktop().setActiveFrame(frames[0])
                     time.sleep(DEFAULT_SLEEP)
                     return
-                time.sleep(DEFAULT_SLEEP)
+                _wait_tick(deadline, "the component to load")
 
     def load_component_from_url(self, url, eventName="OnLoad", load_props=mkPropertyValues({"OnMainThread":True})):
         with EventListener(self._xContext, eventName) as event:
             component =  self.get_desktop().loadComponentFromURL(url, "_default", 0, load_props)
+            deadline = _wait_deadline()
             while True:
                 if event.executed:
                     frames = self.get_frames()
                     #activate the newest frame
                     self.get_desktop().setActiveFrame(frames[-1])
                     return component
-                time.sleep(DEFAULT_SLEEP)
+                _wait_tick(deadline, "%s to load" % url)
 
     # Calls UITest.close_doc at exit
     @contextmanager
@@ -128,8 +158,9 @@ class UITest(object):
             self.close_doc()
 
     def wait_and_yield_dialog(self, event, parent, close_button):
+        deadline = _wait_deadline()
         while not event.executed:
-            time.sleep(DEFAULT_SLEEP)
+            _wait_tick(deadline, "the dialog to open")
         dialog = self._xUITest.getTopFocusWindow()
         if parent.equals(dialog):
             raise Exception("executing the action did not open the dialog")
@@ -176,8 +207,9 @@ class UITest(object):
     def open_subcomponent_through_command(self, command, printNames=False, close_win=True):
         with EventListener(self._xContext, "OnSubComponentOpened", printNames=printNames) as event:
             self._xUITest.executeCommand(command)
+            deadline = _wait_deadline()
             while not event.executed:
-                time.sleep(DEFAULT_SLEEP)
+                _wait_tick(deadline, "%s to open a subcomponent" % command)
             frame = event.supplements[0]
 
         try:
@@ -211,6 +243,7 @@ class UITest(object):
 
         with EventListener(self._xContext, "OnNew") as event:
             xBtn.executeAction("CLICK", tuple())
+            deadline = _wait_deadline()
             while True:
                 if event.executed:
                     frames = self.get_frames()
@@ -221,7 +254,7 @@ class UITest(object):
                     finally:
                         self.close_doc()
                     return
-                time.sleep(DEFAULT_SLEEP)
+                _wait_tick(deadline, "the new %s document" % app)
 
     # Creates an empty HSQLDB database with a temporary file name. On exit UITest.close_doc is
     # called and the temporary file is deleted.
@@ -255,8 +288,9 @@ class UITest(object):
                                                           close_button="yes"):
                             pass
 
+                deadline = _wait_deadline()
                 while not event.executed:
-                    time.sleep(DEFAULT_SLEEP)
+                    _wait_tick(deadline, "the database to be created")
 
             frames = self.get_frames()
             self.get_desktop().setActiveFrame(frames[0])
@@ -273,11 +307,12 @@ class UITest(object):
             button = dialog.getChild(button)
         with EventListener(self._xContext, "DialogClosed" ) as event:
             button.executeAction("CLICK", tuple())
+            deadline = _wait_deadline()
             while True:
                 if event.executed:
                     time.sleep(DEFAULT_SLEEP)
                     break
-                time.sleep(DEFAULT_SLEEP)
+                _wait_tick(deadline, "the dialog to close")
         parent = self._xUITest.getTopFocusWindow()
         if parent.equals(dialog):
             raise Exception("executing the action did not close the dialog")
@@ -328,6 +363,7 @@ class UITest(object):
         thread = threading.Thread(target=action, args=args)
         with EventListener(self._xContext, ["DialogExecute", "ModelessDialogExecute", "ModelessDialogVisible"], printNames=printNames) as event:
             thread.start()
+            deadline = _wait_deadline()
             while True:
                 if event.executed:
                     xDialog = self._xUITest.getTopFocusWindow()
@@ -343,6 +379,6 @@ class UITest(object):
                             self.close_dialog_through_button(xDialog.getChild(close_button), xDialog)
                         thread.join()
                     return
-                time.sleep(DEFAULT_SLEEP)
+                _wait_tick(deadline, "the blocking action's dialog")
 
 # vim: set shiftwidth=4 softtabstop=4 expandtab:

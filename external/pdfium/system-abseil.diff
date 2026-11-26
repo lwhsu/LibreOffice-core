@@ -43,6 +43,21 @@ diff -urN before/core/fpdfdoc/cpvt_variabletext.cpp after/core/fpdfdoc/cpvt_vari
  
  namespace {
  
+diff -urN before/core/fxcrt/bytestring_pool.cpp after/core/fxcrt/bytestring_pool.cpp
+--- core/fxcrt/bytestring_pool.cpp	2026-11-13 00:00:00.000000000 +0000
++++ core/fxcrt/bytestring_pool.cpp	2026-11-13 00:00:01.000000000 +0000
+@@ -8,7 +8,11 @@
+ 
+ #include <memory>
+ 
++#ifdef USE_SYSTEM_ABSEIL
++#include <absl/container/flat_hash_set.h>
++#else
+ #include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
++#endif
+ 
+ namespace fxcrt {
+ 
 diff -urN before/core/fxge/cfx_face.cpp after/core/fxge/cfx_face.cpp
 --- core/fxge/cfx_face.cpp	2026-09-24 15:11:27.161557107 +0000
 +++ core/fxge/cfx_face.cpp	2026-09-24 15:11:41.224965801 +0000

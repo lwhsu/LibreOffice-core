@@ -109,7 +109,7 @@ $(eval $(call gb_Library_use_externals,skia,\
     libpng \
 ))
 
-ifeq ($(OS),LINUX)
+ifneq (,$(filter DRAGONFLY FREEBSD LINUX NETBSD OPENBSD,$(OS)))
 $(eval $(call gb_Library_add_libs,skia,\
     -lm \
     -ldl \
@@ -203,22 +203,6 @@ endif
 ifeq ($(OS),WNT)
 $(eval $(call gb_Library_add_generated_exception_objects,skia,\
     UnpackedTarball/skia/src/ports/SkFontHost_win \
-))
-endif
-
-# from file skia/gn/BUILD.gn:553, target "skia_executable("sksl-minify")"
-#
-ifeq ($(OS),WNT)
-$(eval $(call gb_Library_add_generated_exception_objects,skia,\
-    UnpackedTarball/skia/src/utils/SkGetExecutablePath_win \
-))
-else ifeq ($(OS),MACOSX)
-$(eval $(call gb_Library_add_generated_exception_objects,skia,\
-    UnpackedTarball/skia/src/utils/SkGetExecutablePath_mac \
-))
-else
-$(eval $(call gb_Library_add_generated_exception_objects,skia,\
-    UnpackedTarball/skia/src/utils/SkGetExecutablePath_linux \
 ))
 endif
 

@@ -362,6 +362,14 @@ CPPUNIT_TEST_FIXTURE(SwLayoutWriter4, testTdf145826)
     assertXPath(pXmlDoc, "/root/page/body/section/column[2]/ftncont", 1);
     assertXPath(pXmlDoc, "/root/page/body/section/column[1]/ftncont/ftn", 3);
     assertXPath(pXmlDoc, "/root/page/body/section/column[2]/ftncont/ftn", 3);
+
+    // the ShowHiddenParagraphs dispatch above is persisted module-wide
+    // (SwView::ExecViewOptions -> SwModule::ApplyUsrPref) and leaks into later
+    // tests: testTable0HeightRows relies on hidden paragraphs collapsing table
+    // rows to 0 height; turn it back off
+    uno::Sequence<beans::PropertyValue> argsSHOff(
+        comphelper::InitPropertySequence({ { "ShowHiddenParagraphs", uno::Any(false) } }));
+    dispatchCommand(mxComponent, ".uno:ShowHiddenParagraphs", argsSHOff);
 }
 
 CPPUNIT_TEST_FIXTURE(SwLayoutWriter4, testTable0HeightRows)

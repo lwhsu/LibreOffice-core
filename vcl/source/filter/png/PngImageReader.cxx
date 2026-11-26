@@ -348,6 +348,13 @@ bool reader(SvStream& rStream, ImportOutput& rImportOutput,
     png_set_read_user_chunk_fn(pPng, &aAPNGInfo, &handle_unknown_chunk);
     // don't complain about vpAg and exIf chunks
     png_set_keep_unknown_chunks(pPng, 2, nullptr, 0);
+#ifdef PNG_HANDLE_AS_UNKNOWN_SUPPORTED
+    // A system libpng carrying the APNG patch (e.g. FreeBSD's graphics/png)
+    // knows acTL/fcTL/fdAT as regular chunks and consumes them itself, so they
+    // would never reach handle_unknown_chunk. Force them to stay unknown.
+    static const png_byte aApngChunkNames[] = "acTL\0fcTL\0fdAT";
+    png_set_keep_unknown_chunks(pPng, PNG_HANDLE_CHUNK_ALWAYS, aApngChunkNames, 3);
+#endif
 
     png_infop pInfo = png_create_info_struct(pPng);
     if (!pInfo)
