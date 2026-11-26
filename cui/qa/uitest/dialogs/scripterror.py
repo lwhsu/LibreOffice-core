@@ -25,6 +25,11 @@ class ScriptErrorTest(UITestCase):
             stack.enter_context(self.ui_test.load_file(get_url_for_data_file(
                 "button-with-missing-macro.fodt")))
 
+            # The form control's window is only created once the document is
+            # painted, so wait for that before looking for the button
+            xToolkit = self.xContext.ServiceManager.createInstance('com.sun.star.awt.Toolkit')
+            xToolkit.waitUntilAllIdlesDispatched()
+
             # Find the button
             writer_window = self.xUITest.getTopFocusWindow()
             writer_edit = writer_window.getChild("writer_edit")
